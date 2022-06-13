@@ -1190,3 +1190,38 @@ prop(o, 'a')
 prop(o, 'd')
 ```
 
+约束
+
+```typescript
+// keyof获取对象的所有键，并返回联合类型，利用extends关键字约束K类型必须为联合类型的子类型
+function prop<T, K extends keyof T>(obj: T, key: K) {
+   return obj[key]
+}
+let o = { a: 1, b: 2, c: 3 }
+prop(o, 'v') // 类型“"v"”的参数不能赋给类型“"a" | "b" | "c"”的参数。
+```
+
+## 泛型类
+
+```typescript
+// 在类名后写<参数类型>
+class Sub<T> {
+   attr: T[] = []
+   add(a: T): T[] {
+      return [a]
+   }
+}
+let s = new Sub<number>()
+console.log(s); // Sub { attr: [] }
+s.attr = [1, 2, 3]
+console.log(s); // Sub { attr: [ 1, 2, 3 ] }
+console.log(s.add(555)); // [555]
+
+let str = new Sub<string>()
+str.attr = ['1', '2', '3']
+console.log(str); // Sub { attr: [ '1', '2', '3' ] }
+console.log(str.add('555')); // [ '555' ]
+```
+
+# 15 tsconfig.json配置文件
+
