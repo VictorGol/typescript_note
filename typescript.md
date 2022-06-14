@@ -1407,3 +1407,346 @@ console.log(X); // 1
 
 # 17 三斜线指令
 
+三斜线指令是包含单个XML标签的单行注释。 注释的内容会做为编译器指令使用。
+
+三斜线指令仅可放在包含它的文件的最顶端。 一个三斜线指令的前面只能出现单行或多行注释，这包括其它的三斜线指令。 如果它们出现在一个语句或声明之后，那么它们会被当做普通的单行注释，并且不具有特殊的涵义。
+
+`/// <reference path="..." />`指令是三斜线指令中最常见的一种。 它用于声明文件间的 依赖。
+
+三斜线引用告诉编译器在编译过程中要引入的额外的文件。
+
+你也可以把它理解能import，它可以告诉编译器在编译过程中要引入的额外的文件
+
+示例
+
+index2.ts
+
+```typescript
+namespace A  {
+    export const b = 5
+}
+```
+
+index3.ts
+
+```typescript
+namespace A  {
+    export const a = 1
+}
+```
+
+index.ts
+
+```typescript
+/// <reference path="index2.ts" />
+/// <reference path="index3.ts" />
+
+namespace A {
+    export const c = 666
+}
+console.log(A);
+```
+
+将文件编译到lib文件夹，开启`tsconfig.json`里的`"outFile": "./lib/index.js",`
+
+```javascript
+"use strict";
+var A;
+(function (A) {
+    A.a = 1;
+})(A || (A = {}));
+var A;
+(function (A) {
+    A.b = 5;
+})(A || (A = {}));
+///<reference path="index2.ts" />
+///<reference path="index3.ts" />
+var A;
+(function (A) {
+    A.c = 666;
+})(A || (A = {}));
+console.log(A); // { a: 1, b: 5, c: 666 }
+```
+
+## 声明文件引入
+
+例如，把`/// <reference types="node" />`引入到声明文件，表明这个文件使用了 @types/node/index.d.ts里面声明的名字； 并且，这个包需要在编译阶段与声明文件一起被包含进来。
+
+仅当在你需要写一个d.ts文件时才使用这个指令。
+
+装一下node的声明文件，比如说node的声明文件
+
+`npm install @types/node -D`
+
+# 18 声明文件d.ts
+
+当使用第三方库时，我们需要引用它的声明文件，才能获得对应的代码补全、接口提示等功能。
+
+```typeScript
+declare var 声明全局变量
+declare function 声明全局方法
+declare class 声明全局类
+declare enum 声明全局枚举类型
+declare namespace 声明（含有子属性的）全局对象
+interface 和 type 声明全局类型
+/// <reference /> 三斜线指令
+```
+
+创建`package.json`，通过`npm init -y`
+
+装一下express，`npm install express -S`
+
+装一下axios，`npm install axios -S`
+
+引入axios时正常，引入express时报错，提示没有找到express的声明文件
+
+因为在axios的package.json里已经指定了它的声明文件`"types": "index.d.ts",`，而express的package.json里没有指定。
+
+根据提示：尝试使用 `npm i --save-dev @types/express` (如果存在)，或者添加一个包含 `declare module 'express';` 的新声明(.d.ts)文件
+
+在这里选择第一种就好
+
+@types就是做声明文件的，因为axios自己做了，就不用再装了，而express没做
+
+关于这些第三发的声明文件包都收录到了 [npm](https://www.npmjs.com/~types?activeTab=packages)
+
+目前有9千多个包
+
+# 19 Mixins混入
+
+可以看作合并
+
+## 对象混入
+
+```typeScript
+interface Name {
+    name: string
+}
+interface Age {
+    age: number
+}
+interface Sex {
+    sex: number
+}
+
+let people1: Name = { name: "小满" }
+let people2: Age = { age: 20 }
+let people3: Sex = { sex: 1 }
+
+const people = Object.assign(people1, people2, people3)
+
+console.log(people); // { name: '小满', age: 20, sex: 1 }
+
+```
+
+## 类的混入
+
+严格模式要关闭不然编译不过
+
+```typeScript
+class A {
+    type: boolean
+    changeType(): void {
+        this.type = !this.type
+    }
+}
+// 类会将自己的属性方法挂在到自己的原型上
+class B {
+    name: string
+    getName(): string {
+        return this.name
+    }
+}
+// 实现类
+class C implements A, B {
+    type: boolean = false;
+    name: string = "小满";
+    changeType: () => void
+    getName: () => string
+}
+// 帮助函数
+function mixins(currentClass: any, itemClass: any[]) {
+    itemClass.forEach(item => {
+        // 从原型上获取类的属性名
+        Object.getOwnPropertyNames(item.prototype).forEach(name => {
+            // 将具体的实现方法赋到当前类
+            currentClass.prototype[name] = item.prototype[name]
+        })
+    })
+}
+
+mixins(C, [A, B])
+
+let ccc = new C()
+console.log(ccc.type); // false
+ccc.changeType()
+console.log(ccc.type); // true
+```
+
+# 20 装饰器Decorator
+
+Decorator 装饰器是一项实验性特性，在未来的版本中可能会发生改变
+它们不仅增加了代码的可读性，清晰地表达了意图，而且提供一种方便的手段，增加或修改类的功能
+
+若要启用实验性的装饰器特性，你必须在命令行或tsconfig.json里启用编译器选项
+
+`"experimentalDecorators": true`
+
+装饰器是一种特殊类型的声明，它能够被附加到类声明，方法， 访问符，属性或参数上。
+
+```typeScript
+// 定义一个类装饰器函数 他会把ClassA的原型对象传入你的watcher函数当做第一个参数
+const watcher:ClassDecorator = (target:Function)=>{
+    console.log(target); // [class A]
+    // 给这个类加个方法
+    target.prototype.getName = <T>(name:T):T =>{
+        return name
+    }
+}
+
+// 这么使用，会给watcher函数回传原型对象
+@watcher
+class A {}
+
+let a = new A();
+// 不加断言找不到getName方法
+(<any>a).getName('eeeeee');
+```
+
+## 接收参数
+
+```typeScript
+// 定义一个类装饰器函数 他会把ClassA的构造函数传入你的watcher函数当做第一个参数
+const watcher = (name:string): ClassDecorator => {
+    return (target: Function) => {
+        target.prototype.getNames=()=>{
+            return name
+        }
+    }
+}
+
+@watcher('小满')
+class A { }
+
+let a = new A();
+console.log((<any>a).getNames()); // 小满
+```
+
+## 组合式装饰器
+
+```typeScript
+const watcher = (name: string): ClassDecorator => {
+    return (target: Function) => {
+        target.prototype.getNames = () => {
+            return name
+        }
+    }
+}
+
+const log: ClassDecorator = (target: Function) => {
+    target.prototype.a = 123
+}
+
+@watcher('小满')
+@log
+class A { }
+
+let a = new A();
+console.log((<any>a).getNames()); // 小满
+console.log((<any>a).a); // 123
+
+```
+
+## 属性装饰器
+
+返回两个参数
+
+参数1：对于静态成员来说是类的构造函数，对于实例成员是类的原型对象。
+
+参数2：成员的名字。
+
+```typeScript
+const log:PropertyDecorator = (...arg) => {
+    console.log(arg); // [ {}, 'name', undefined ]
+}
+
+class A {
+    @log
+    name:string
+}
+```
+
+## 属性、方法装饰器
+
+返回三个参数
+
+参数1：对于静态成员来说是类的构造函数，对于实例成员是类的原型对象。
+
+参数2：成员的名字。
+
+参数3：成员的属性描述符。
+
+```typeScript
+const log:MethodDecorator = (...arg) => {
+    console.log(arg);
+}
+
+class A {
+    name:string
+    @log
+    getName(){
+        return '7878'
+    }
+}
+
+```
+
+```typeScript
+[
+  {},
+  'getName',
+  {
+    value: [Function: getName],
+    writable: true,
+    enumerable: false,
+    configurable: true
+  }
+]
+```
+
+## 参数装饰器
+
+参数1：对于静态成员来说是类的构造函数，对于实例成员是类的原型对象。
+
+参数2：成员的名字。
+
+参数3：参数的索引
+
+```typeScript
+const log: ParameterDecorator = (...arg) => {
+    console.log(arg); // [ {}, 'getName', 0 ]
+}
+
+class A {
+    name: string
+    getName(@log name: string) {
+        return '7878'
+    }
+}
+```
+
+```typeScript
+const log: ParameterDecorator = (...arg) => {
+    console.log(arg); // [ {}, 'getName', 1 ]
+}
+
+class A {
+    name: string
+    getName(name: string, @log age: number) {
+        return '7878'
+    }
+}
+```
+
+# 21 Rollup构建TS项目 & webpack构建TS项目
+
