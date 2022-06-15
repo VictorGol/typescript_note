@@ -1750,3 +1750,252 @@ class A {
 
 # 21 Rollup构建TS项目 & webpack构建TS项目
 
+## Rollup
+
+rollup打包的体积较小，用来做一些小项目是完全没问题的
+
+`npm init -y`生成package.json
+
+新建`rollup.config.js`rollup的配置文件
+
+新建`src`、`public`文件夹
+
+新建`src/index.ts`、`public/index.html`
+
+`tsc --init`生成ts的配置文件
+
+安装依赖
+1.全局安装rollup `npm install rollup -g`
+
+2.安装TypeScript   `npm install typescript -D`
+
+3.安装TypeScript 转换器 `npm install rollup-plugin-typescript2 -D`
+
+4安装代码压缩插件 `npm install rollup-plugin-terser -D`
+
+5 安装rollupweb服务 `npm install rollup-plugin-serve -D`
+
+6 安装热更新 `npm install rollup-plugin-livereload -D`
+
+7引入外部依赖 `npm install rollup-plugin-node-resolve -D`
+
+8安装配置环境变量用来区分本地和生产  `npm install cross-env -D`
+
+9替换环境变量给浏览器使用 `npm install rollup-plugin-replace -D`
+
+package.json
+
+```json
+{
+  "name": "rollupTs",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    // -w是--watch，就是监听，页面有改动会,cross-env NODE_ENV=development是环境变量
+    // 起服务时，给node环境变量赋值development
+    "dev": "cross-env NODE_ENV=development  rollup -c -w",
+    // -c是读取当前目录下的rollup.config.js
+    // 打包时给node环境变量赋值production，区分是生产还是开发环境
+    "build":"cross-env NODE_ENV=production  rollup -c"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "rollup-plugin-livereload": "^2.0.5",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-replace": "^2.2.0",
+    "rollup-plugin-serve": "^1.1.0",
+    "rollup-plugin-terser": "^7.0.2",
+    "rollup-plugin-typescript2": "^0.31.1",
+    "typescript": "^4.5.5"
+  }
+}
+```
+
+tsconfig.json里的mudule改成ES2015
+
+rollup.config.js
+
+```javascript
+// 查看环境变量，可以把"dev"里的-w删了再看，但浏览器里看不了，这是弄得里的
+// console.log(process.env);
+import path from 'path'
+import ts from 'rollup-plugin-typescript2'
+import serve from 'rollup-plugin-serve'
+import livereload from 'rollup-plugin-livereload'
+import { terser } from 'rollup-plugin-terser'
+import replce from 'rollup-plugin-replace'
+const isDev = () => {
+    return process.env.NODE_ENV === 'development'
+}
+export default {
+    input: "./src/index.ts", // 入口
+    // 出口
+    output: {
+        // 编译输出出口文件
+        file: path.resolve(__dirname, './lib/index.js'),
+        // 编译格式
+        format: "umd",
+        // 开启suorcemap
+        sourcemap: true
+    },
+    plugins: [
+        // 会去读取tsconfig.json
+        ts(),
+        // 这个是做热更新的
+        isDev() && livereload(),
+        // 代码压缩，给代码压缩到一行
+        terser({
+            compress: {
+                // 可以删掉console.log
+                drop_console: !isDev()
+            }
+        }
+        ),
+        // 把环境变量注册到浏览器
+        replce({
+            'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
+            'a': 'sss', // 自定义的
+        }),
+        // 这个插件用来起前端服务
+        isDev() && serve({
+            open: true, // 是否打开页面
+            port: 1998, // 指定端口
+            openPage: "/public/index.html", // 指定打开页面
+        })
+    ]
+}
+```
+
+`npm run build`打包后会生成lib文件
+
+在public/index.html里引入
+
+`npm run dev`rollup服务就起好了
+
+index.ts
+
+```typeScript
+const a: string = "小满1"
+
+if (process.env.NODE_ENV === 'development') {
+    alert('开发')
+} else {
+    alert('生产')
+}
+```
+
+index.html
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script src="../lib/index.js"></script>
+</body>
+</html>
+```
+
+## webpack
+
+`npm init -y`生成package.json
+
+新建`src`、`public`文件夹
+
+新建`src/index.ts`、`public/index.html`
+
+`tsc --init`生成ts的配置文件
+
+安装webpack   `npm install webpack -D`
+
+webpack4以上需要 `npm install  webpack-cli -D`
+
+编译TS  `npm install ts-loader -D`
+
+TS环境 `npm install typescript -D`
+
+热更新服务 `npm install webpack-dev-server -D`
+
+HTML模板 `npm install html-webpack-plugin -D`
+
+新建webpck.config.js
+
+```typeScript
+const path = require('path')
+const htmlwebpackplugin = require('html-webpack-plugin')
+
+module.exports = {
+    entry: "./src/index.ts",
+    mode: "development",
+    output: {
+        path: path.resolve(__dirname, './dist'),
+        filename: "index.js"
+    },
+    module: {
+        rules: [
+            {
+                test: /\.ts$/, // 以.ts结尾的文件
+                use: "ts-loader", // 指定编译器
+            }
+        ]
+    },
+    // 匹配后缀
+    resolve: {
+        extensions: ['.js', 'ts'], // import时就不用写后缀了
+        alias: {
+            '@': path.resolve(__dirname, './src')
+        }
+    },
+    // 开发环境的服务
+    devServer: {
+        port: 1998,
+        // 跨域代理
+        proxy: {}
+    },
+    plugins: [
+        new htmlwebpackplugin({
+            template: './public/index.html' // 指定模板
+        })
+    ]
+}
+```
+
+package.json
+
+```json
+{
+  "name": "webpackts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "webpack-dev-server",
+    "build": "webpack"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "html-webpack-plugin": "^5.5.0",
+    "ts-loader": "^9.3.0",
+    "typescript": "^4.7.3",
+    "webpack": "^5.73.0",
+    "webpack-cli": "^4.10.0",
+    "webpack-dev-server": "^4.9.2"
+  }
+}
+```
+
+# 22 TS编写发布订阅模式
+
